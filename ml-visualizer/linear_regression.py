@@ -66,7 +66,7 @@ class LinearRegressionVisualizer:
         self.paused = False
 
         self.scatter.set_offsets(np.c_[self.X, self.y])
-        self.anim.frame_seq = range(len(self.history))
+        self.anim.frame_seq = iter(range(len(self.history)))
 
         if self.paused:
             self.anim.event_source.stop()

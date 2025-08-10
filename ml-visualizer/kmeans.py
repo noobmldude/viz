@@ -81,7 +81,7 @@ class KMeansVisualizer:
         self.scatter.set_offsets(self.X)
         self.ax.set_xlim(self.X[:, 0].min() - 1, self.X[:, 0].max() + 1)
         self.ax.set_ylim(self.X[:, 1].min() - 1, self.X[:, 1].max() + 1)
-        self.anim.frame_seq = range(len(self.history))
+        self.anim.frame_seq = iter(range(len(self.history)))
 
         if self.paused:
             self.anim.event_source.stop()

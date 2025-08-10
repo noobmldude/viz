@@ -72,7 +72,7 @@ class GradientDescentVisualizer:
         self.ax.set_ylabel('y')
         self.ax.set_title('Gradient Descent (r: Refresh, Space: Pause, Arrows: Step)')
 
-        self.anim.frame_seq = range(len(self.history))
+        self.anim.frame_seq = iter(range(len(self.history)))
 
         if self.paused:
             self.anim.event_source.stop()
