@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from sklearn.neural_network import MLPClassifier
 from sklearn.model_selection import train_test_split
+from scipy.special import softmax
 import urllib.request
 import os
 from animation_controller import AnimationController
@@ -32,6 +33,7 @@ class DigitClassifierVisualizer:
         self.ax_logits.set_xticks(range(10))
         self.ax_logits.set_ylabel('Logit Value')
         self.ax_logits.set_title('Output Logits')
+        self.prob_labels = [self.ax_logits.text(i, 0, '', ha='center', va='bottom') for i in range(10)]
 
         self.anim = None
         self.current_frame = 0
@@ -57,7 +59,7 @@ class DigitClassifierVisualizer:
         # Check if model has been fitted at all
         if not hasattr(self.model, 'coefs_'):
             # For MNIST, there are 10 output classes (digits 0-9)
-            return np.zeros(self.model.hidden_layer_sizes), np.zeros(10)
+            return np.zeros(self.model.hidden_layer_sizes), np.zeros(10), np.ones(10) / 10
 
         # Manual forward pass to get internal states
         hidden_activations = X_sample.reshape(1, -1)
@@ -69,7 +71,10 @@ class DigitClassifierVisualizer:
         # Layer 2 (Hidden -> Output)
         logits = hidden_activations @ self.model.coefs_[1] + self.model.intercepts_[1]
 
-        return hidden_activations[0], logits[0]
+        # Probabilities
+        probabilities = softmax(logits)
+
+        return hidden_activations[0], logits[0], probabilities[0]
 
     def setup_and_train(self):
         # Pick a random sample from the test set to visualize
@@ -83,33 +88,36 @@ class DigitClassifierVisualizer:
         self.history = []
 
         # Initial state before training
-        initial_hidden, initial_logits = self._manual_forward_pass(self.sample_image)
-        self.history.append((initial_hidden, initial_logits))
+        initial_hidden, initial_logits, initial_probs = self._manual_forward_pass(self.sample_image)
+        self.history.append((initial_hidden, initial_logits, initial_probs))
 
         # Train epoch by epoch (using partial_fit)
         classes = np.unique(self.y_train)
         for epoch in range(self.n_epochs):
             self.model.partial_fit(self.X_train, self.y_train, classes=classes)
-            hidden_activations, logits = self._manual_forward_pass(self.sample_image)
-            self.history.append((hidden_activations, logits))
+            hidden, logits, probs = self._manual_forward_pass(self.sample_image)
+            self.history.append((hidden, logits, probs))
 
     def _update_plot(self, frame):
         if not self.paused:
             self.current_frame = frame
 
-        hidden_activations, logits = self.history[self.current_frame]
+        hidden_activations, logits, probabilities = self.history[self.current_frame]
 
         # Update hidden layer heatmap
         self.hidden_display.set_data(hidden_activations.reshape(5, 10))
         self.hidden_display.set_clim(vmin=0, vmax=hidden_activations.max() + 1e-9)
 
-        # Update logits bar chart
-        for bar, h in zip(self.bar_container, logits):
+        # Update logits bar chart and probability labels
+        for i, (bar, h, prob) in enumerate(zip(self.bar_container, logits, probabilities)):
             bar.set_height(h)
+            self.prob_labels[i].set_text(f'{prob:.2f}')
+            self.prob_labels[i].set_position((i, h + 0.05 * np.sign(h)))
 
         # Adjust y-axis limits for logits
         min_logit, max_logit = logits.min(), logits.max()
-        self.ax_logits.set_ylim(min_logit - abs(min_logit*0.1), max_logit + abs(max_logit*0.1))
+        padding = (max_logit - min_logit) * 0.1
+        self.ax_logits.set_ylim(min_logit - padding, max_logit + padding)
 
         # Update titles
         self.ax_img.set_title(f'Input (True: {self.sample_label})')
@@ -117,13 +125,14 @@ class DigitClassifierVisualizer:
         predicted_class = np.argmax(logits)
         self.ax_logits.set_title(f'Prediction: {predicted_class}')
 
-        return list(self.bar_container) + [self.hidden_display]
+        return list(self.bar_container) + [self.hidden_display] + self.prob_labels
 
     def animate(self):
         self._load_data_from_url()
         self.setup_and_train()
 
         self.img_display.set_data(self.sample_image.reshape(28, 28))
+        self.fig.canvas.draw() # Explicitly draw the initial image
 
         self.fig.suptitle('Digit Classification (r: Refresh, Space: Pause, Arrows: Step)', fontsize=16)
 
