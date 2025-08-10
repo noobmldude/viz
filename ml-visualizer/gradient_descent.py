@@ -4,10 +4,11 @@ from matplotlib.animation import FuncAnimation
 from animation_controller import AnimationController
 
 class GradientDescentVisualizer:
-    def __init__(self, func, gradient, initial_point, learning_rate=0.001, n_iterations=10000):
+    def __init__(self, func, gradient, initial_point, func_params={'a': 1, 'b': 100}, learning_rate=0.001, n_iterations=10000):
         self.func = func
         self.gradient = gradient
         self.point = np.array(initial_point, dtype=float)
+        self.func_params = func_params
         self.learning_rate = learning_rate
         self.n_iterations = n_iterations
         self.history = [self.point.copy()]
@@ -19,7 +20,7 @@ class GradientDescentVisualizer:
 
     def optimize(self):
         for _ in range(self.n_iterations):
-            grad = self.gradient(self.point[0], self.point[1])
+            grad = self.gradient(self.point[0], self.point[1], **self.func_params)
             self.point -= self.learning_rate * grad
             self.history.append(self.point.copy())
 
@@ -35,7 +36,7 @@ class GradientDescentVisualizer:
         x = np.linspace(-2, 2, 400)
         y = np.linspace(-1, 3, 400)
         X, Y = np.meshgrid(x, y)
-        Z = self.func(X, Y)
+        Z = self.func(X, Y, **self.func_params)
 
         self.ax.contour(X, Y, Z, levels=np.logspace(0, 3.5, 20), cmap='viridis')
         self.ax.set_xlabel('x')
@@ -81,8 +82,12 @@ def gradient_of_func(x, y, a=1, b=100):
     return np.array([dx, dy])
 
 def run_gradient_descent():
+    a = np.random.uniform(0.5, 1.5)
+    b = np.random.uniform(50, 150)
+    func_params = {'a': a, 'b': b}
+
     initial_point = np.random.uniform(-2, 2, size=2)
-    gd_visualizer = GradientDescentVisualizer(func_to_optimize, gradient_of_func, initial_point)
+    gd_visualizer = GradientDescentVisualizer(func_to_optimize, gradient_of_func, initial_point, func_params=func_params)
     gd_visualizer.optimize()
     gd_visualizer.animate()
 
