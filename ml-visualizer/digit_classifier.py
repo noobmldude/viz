@@ -33,7 +33,7 @@ class DigitClassifierVisualizer:
         self.ax_logits.set_xticks(range(10))
         self.ax_logits.set_ylabel('Logit Value')
         self.ax_logits.set_title('Output Logits')
-        self.prob_labels = [self.ax_logits.text(i, 0, '', ha='center', va='bottom') for i in range(10)]
+        self.prob_labels = [self.ax_logits.text(i, 0, '', ha='center', va='bottom', fontsize=8) for i in range(10)]
 
         self.anim = None
         self.current_frame = 0
@@ -104,6 +104,9 @@ class DigitClassifierVisualizer:
 
         hidden_activations, logits, probabilities = self.history[self.current_frame]
 
+        # Update Input Image
+        self.img_display.set_data(self.sample_image.reshape(28, 28))
+
         # Update hidden layer heatmap
         self.hidden_display.set_data(hidden_activations.reshape(5, 10))
         self.hidden_display.set_clim(vmin=0, vmax=hidden_activations.max() + 1e-9)
@@ -112,11 +115,13 @@ class DigitClassifierVisualizer:
         for i, (bar, h, prob) in enumerate(zip(self.bar_container, logits, probabilities)):
             bar.set_height(h)
             self.prob_labels[i].set_text(f'{prob:.2f}')
-            self.prob_labels[i].set_position((i, h + 0.05 * np.sign(h)))
+            # Position text above or below bar based on logit value
+            y_pos = h + 0.1 * np.sign(h) if h != 0 else 0.1
+            self.prob_labels[i].set_position((i, y_pos))
 
         # Adjust y-axis limits for logits
         min_logit, max_logit = logits.min(), logits.max()
-        padding = (max_logit - min_logit) * 0.1
+        padding = (max_logit - min_logit) * 0.2 + 0.5 # Add a bit more padding for labels
         self.ax_logits.set_ylim(min_logit - padding, max_logit + padding)
 
         # Update titles
@@ -125,19 +130,17 @@ class DigitClassifierVisualizer:
         predicted_class = np.argmax(logits)
         self.ax_logits.set_title(f'Prediction: {predicted_class}')
 
-        return list(self.bar_container) + [self.hidden_display] + self.prob_labels
+        return [self.img_display, self.hidden_display] + list(self.bar_container) + self.prob_labels
 
     def animate(self):
         self._load_data_from_url()
         self.setup_and_train()
 
-        self.img_display.set_data(self.sample_image.reshape(28, 28))
-        self.fig.canvas.draw() # Explicitly draw the initial image
-
         self.fig.suptitle('Digit Classification (r: Refresh, Space: Pause, Arrows: Step)', fontsize=16)
 
         def init():
-            return self._update_plot(0)
+            # Return an empty list of artists, as _update_plot will draw everything.
+            return []
 
         self.anim = FuncAnimation(self.fig, self._update_plot, frames=len(self.history),
                                   init_func=init, blit=False, interval=500, repeat=False)
@@ -150,15 +153,14 @@ class DigitClassifierVisualizer:
         self.current_frame = 0
         self.paused = False
 
-        self.img_display.set_data(self.sample_image.reshape(28, 28))
         self.anim.frame_seq = iter(range(len(self.history)))
 
         # Stop and restart the animation timer to ensure it's in a clean state
         self.anim.event_source.stop()
         self.anim.event_source.start()
 
-        self._update_plot(0)
-        self.fig.canvas.draw_idle()
+        # The animation loop will call _update_plot, so we don't need to call it manually.
+        # self.fig.canvas.draw_idle() will be handled by the animation frame.
 
     def toggle_pause(self, paused):
         self.paused = paused
