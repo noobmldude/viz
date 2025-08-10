@@ -7,6 +7,7 @@ This project provides visualizations for various classical machine learning algo
 * Linear Regression
 * K-Means Clustering
 * Gradient Descent
+* Digit Classifier (Neural Network)
 
 ## Usage
 

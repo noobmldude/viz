@@ -13,14 +13,25 @@ class DigitClassifierVisualizer:
         self.history = []
         self.model = None # Will be initialized in setup_and_train
 
-        self.fig, (self.ax_img, self.ax_bar) = plt.subplots(1, 2, figsize=(10, 5))
+        self.fig, (self.ax_img, self.ax_hidden, self.ax_logits) = plt.subplots(1, 3, figsize=(15, 5), gridspec_kw={'width_ratios': [1, 1, 2]})
+
+        # Input Image
         self.img_display = self.ax_img.imshow(np.zeros((28, 28)), cmap='gray_r')
-        self.bar_container = self.ax_bar.bar(range(10), np.ones(10) / 10)
-        self.ax_bar.set_xticks(range(10))
-        self.ax_bar.set_ylim(0, 1)
-        self.ax_bar.set_ylabel('Probability')
         self.ax_img.set_xticks([])
         self.ax_img.set_yticks([])
+        self.ax_img.set_title('Input Image')
+
+        # Hidden Layer Activations
+        self.hidden_display = self.ax_hidden.imshow(np.zeros((5, 10)), cmap='viridis', aspect='auto')
+        self.ax_hidden.set_xticks([])
+        self.ax_hidden.set_yticks([])
+        self.ax_hidden.set_title('Hidden Layer Activations')
+
+        # Output Logits
+        self.bar_container = self.ax_logits.bar(range(10), np.zeros(10))
+        self.ax_logits.set_xticks(range(10))
+        self.ax_logits.set_ylabel('Logit Value')
+        self.ax_logits.set_title('Output Logits')
 
         self.anim = None
         self.current_frame = 0
@@ -42,6 +53,23 @@ class DigitClassifierVisualizer:
 
         self.X_train, self.X_test, self.y_train, self.y_test = X_train, X_test, y_train.astype(str), y_test.astype(str)
 
+    def _manual_forward_pass(self, X_sample):
+        # Check if model has been fitted at all
+        if not hasattr(self.model, 'coefs_'):
+            return np.zeros(self.model.hidden_layer_sizes), np.zeros(self.model.n_outputs_)
+
+        # Manual forward pass to get internal states
+        hidden_activations = X_sample.reshape(1, -1)
+        # Layer 1 (Input -> Hidden)
+        hidden_activations = hidden_activations @ self.model.coefs_[0] + self.model.intercepts_[0]
+        # ReLU activation
+        hidden_activations = np.maximum(0, hidden_activations)
+
+        # Layer 2 (Hidden -> Output)
+        logits = hidden_activations @ self.model.coefs_[1] + self.model.intercepts_[1]
+
+        return hidden_activations[0], logits[0]
+
     def setup_and_train(self):
         # Pick a random sample from the test set to visualize
         self.sample_index = np.random.randint(0, len(self.X_test))
@@ -53,28 +81,42 @@ class DigitClassifierVisualizer:
                                    learning_rate_init=.1, verbose=False)
         self.history = []
 
-        initial_probs = np.ones((1, 10)) / 10
-        self.history.append(initial_probs[0])
+        # Initial state before training
+        initial_hidden, initial_logits = self._manual_forward_pass(self.sample_image)
+        self.history.append((initial_hidden, initial_logits))
 
+        # Train epoch by epoch (using partial_fit)
         classes = np.unique(self.y_train)
         for epoch in range(self.n_epochs):
             self.model.partial_fit(self.X_train, self.y_train, classes=classes)
-            probs = self.model.predict_proba([self.sample_image])
-            self.history.append(probs[0])
+            hidden_activations, logits = self._manual_forward_pass(self.sample_image)
+            self.history.append((hidden_activations, logits))
 
     def _update_plot(self, frame):
         if not self.paused:
             self.current_frame = frame
 
-        probs = self.history[self.current_frame]
-        for bar, h in zip(self.bar_container, probs):
+        hidden_activations, logits = self.history[self.current_frame]
+
+        # Update hidden layer heatmap
+        self.hidden_display.set_data(hidden_activations.reshape(5, 10))
+        self.hidden_display.set_clim(vmin=0, vmax=hidden_activations.max() + 1e-9)
+
+        # Update logits bar chart
+        for bar, h in zip(self.bar_container, logits):
             bar.set_height(h)
 
-        self.ax_img.set_title(f'Epoch {self.current_frame} / {self.n_epochs}')
-        predicted_class = np.argmax(probs)
-        self.ax_bar.set_title(f'Prediction: {predicted_class} (True: {self.sample_label})')
+        # Adjust y-axis limits for logits
+        min_logit, max_logit = logits.min(), logits.max()
+        self.ax_logits.set_ylim(min_logit - abs(min_logit*0.1), max_logit + abs(max_logit*0.1))
 
-        return list(self.bar_container)
+        # Update titles
+        self.ax_img.set_title(f'Input (True: {self.sample_label})')
+        self.ax_hidden.set_title(f'Epoch {self.current_frame} / {self.n_epochs}')
+        predicted_class = np.argmax(logits)
+        self.ax_logits.set_title(f'Prediction: {predicted_class}')
+
+        return list(self.bar_container) + [self.hidden_display]
 
     def animate(self):
         self._load_data_from_url()
@@ -101,6 +143,7 @@ class DigitClassifierVisualizer:
         self.img_display.set_data(self.sample_image.reshape(28, 28))
         self.anim.frame_seq = iter(range(len(self.history)))
 
+        # Stop and restart the animation timer to ensure it's in a clean state
         self.anim.event_source.stop()
         self.anim.event_source.start()
 
