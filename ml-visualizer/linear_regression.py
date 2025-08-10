@@ -4,22 +4,27 @@ from matplotlib.animation import FuncAnimation
 from animation_controller import AnimationController
 
 class LinearRegressionVisualizer:
-    def __init__(self, X, y, learning_rate=0.01, n_iterations=100):
-        self.X = X
-        self.y = y
+    def __init__(self, learning_rate=0.01, n_iterations=100):
         self.learning_rate = learning_rate
         self.n_iterations = n_iterations
-        self.m = len(y)
-        self.X_b = np.c_[np.ones((self.m, 1)), self.X]  # Add x0 = 1 to each instance
-        self.theta = np.random.randn(2, 1)  # Random initialization
         self.history = []
         self.anim = None
         self.fig, self.ax = plt.subplots()
+        self.scatter = self.ax.scatter([], [], label='Data')
         self.line, = self.ax.plot([], [], 'r-', label='Regression Line')
         self.current_frame = 0
         self.paused = False
 
-    def train(self):
+    def _generate_data(self):
+        self.X = 2 * np.random.rand(100, 1)
+        self.y = 4 + 3 * self.X + np.random.randn(100, 1)
+
+    def setup_and_train(self):
+        self._generate_data()
+        self.m = len(self.y)
+        self.X_b = np.c_[np.ones((self.m, 1)), self.X]
+        self.theta = np.random.randn(2, 1)
+        self.history = []
         for iteration in range(self.n_iterations):
             gradients = 2/self.m * self.X_b.T.dot(self.X_b.dot(self.theta) - self.y)
             self.theta = self.theta - self.learning_rate * gradients
@@ -35,11 +40,15 @@ class LinearRegressionVisualizer:
         return self.line,
 
     def animate(self):
-        self.ax.scatter(self.X, self.y, label='Data')
+        self.setup_and_train()
+
+        self.scatter.set_offsets(np.c_[self.X, self.y])
         self.ax.set_xlabel('X')
         self.ax.set_ylabel('y')
-        self.ax.set_title('Linear Regression (Space: Pause/Resume, Arrows: Step)')
+        self.ax.set_title('Linear Regression (r: Refresh, Space: Pause, Arrows: Step)')
         self.ax.legend()
+        self.ax.set_xlim(0, 2)
+        self.ax.set_ylim(0, 15)
 
         def init():
             self.line.set_data([], [])
@@ -50,6 +59,24 @@ class LinearRegressionVisualizer:
 
         self.controller = AnimationController(self.fig, self)
         plt.show()
+
+    def refresh(self):
+        self.setup_and_train()
+        self.current_frame = 0
+        self.paused = False
+
+        self.scatter.set_offsets(np.c_[self.X, self.y])
+        self.anim.frame_seq = range(len(self.history))
+
+        if self.paused:
+            self.anim.event_source.stop()
+        else:
+            if not self.anim.event_source._running:
+                self.anim.event_source.start()
+
+        self._update_plot(0)
+        self.fig.canvas.draw_idle()
+
 
     def toggle_pause(self, paused):
         self.paused = paused
@@ -68,16 +95,8 @@ class LinearRegressionVisualizer:
         self._update_plot(self.current_frame)
         self.fig.canvas.draw_idle()
 
-
-def generate_data():
-    X = 2 * np.random.rand(100, 1)
-    y = 4 + 3 * X + np.random.randn(100, 1)
-    return X, y
-
 def run_linear_regression():
-    X, y = generate_data()
-    lr_visualizer = LinearRegressionVisualizer(X, y)
-    lr_visualizer.train()
+    lr_visualizer = LinearRegressionVisualizer()
     lr_visualizer.animate()
 
 if __name__ == '__main__':

@@ -16,3 +16,5 @@ class AnimationController:
         elif event.key == 'left':
             if self.paused:
                 self.visualizer.step_backward()
+        elif event.key == 'r':
+            self.visualizer.refresh()
