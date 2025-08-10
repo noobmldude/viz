@@ -74,11 +74,9 @@ class GradientDescentVisualizer:
 
         self.anim.frame_seq = iter(range(len(self.history)))
 
-        if self.paused:
-            self.anim.event_source.stop()
-        else:
-            if not self.anim.event_source._running:
-                self.anim.event_source.start()
+        # Stop and restart the animation timer to ensure it's in a clean state
+        self.anim.event_source.stop()
+        self.anim.event_source.start()
 
         self._update_plot(0)
         self.fig.canvas.draw_idle()
