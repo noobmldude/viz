@@ -56,7 +56,8 @@ class DigitClassifierVisualizer:
     def _manual_forward_pass(self, X_sample):
         # Check if model has been fitted at all
         if not hasattr(self.model, 'coefs_'):
-            return np.zeros(self.model.hidden_layer_sizes), np.zeros(self.model.n_outputs_)
+            # For MNIST, there are 10 output classes (digits 0-9)
+            return np.zeros(self.model.hidden_layer_sizes), np.zeros(10)
 
         # Manual forward pass to get internal states
         hidden_activations = X_sample.reshape(1, -1)
