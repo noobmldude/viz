@@ -4,7 +4,7 @@ from matplotlib.animation import FuncAnimation
 from animation_controller import AnimationController
 
 class GradientDescentVisualizer:
-    def __init__(self, func, gradient, initial_point, learning_rate=0.1, n_iterations=100):
+    def __init__(self, func, gradient, initial_point, learning_rate=0.001, n_iterations=10000):
         self.func = func
         self.gradient = gradient
         self.point = np.array(initial_point, dtype=float)
@@ -32,12 +32,12 @@ class GradientDescentVisualizer:
         return self.path,
 
     def animate(self):
-        x = np.linspace(-10, 10, 100)
-        y = np.linspace(-10, 10, 100)
+        x = np.linspace(-2, 2, 400)
+        y = np.linspace(-1, 3, 400)
         X, Y = np.meshgrid(x, y)
         Z = self.func(X, Y)
 
-        self.ax.contour(X, Y, Z, levels=np.logspace(0, 5, 35), cmap='viridis')
+        self.ax.contour(X, Y, Z, levels=np.logspace(0, 3.5, 20), cmap='viridis')
         self.ax.set_xlabel('x')
         self.ax.set_ylabel('y')
         self.ax.set_title('Gradient Descent (Space: Pause/Resume, Arrows: Step)')
@@ -70,14 +70,18 @@ class GradientDescentVisualizer:
         self.fig.canvas.draw_idle()
 
 
-def func_to_optimize(x, y):
-    return x**2 + y**2
+def func_to_optimize(x, y, a=1, b=100):
+    """Rosenbrock function"""
+    return (a - x)**2 + b * (y - x**2)**2
 
-def gradient_of_func(x, y):
-    return np.array([2*x, 2*y])
+def gradient_of_func(x, y, a=1, b=100):
+    """Gradient of the Rosenbrock function"""
+    dx = -2 * (a - x) - 4 * b * x * (y - x**2)
+    dy = 2 * b * (y - x**2)
+    return np.array([dx, dy])
 
 def run_gradient_descent():
-    initial_point = np.random.uniform(-10, 10, size=2)
+    initial_point = np.random.uniform(-2, 2, size=2)
     gd_visualizer = GradientDescentVisualizer(func_to_optimize, gradient_of_func, initial_point)
     gd_visualizer.optimize()
     gd_visualizer.animate()
