@@ -20,6 +20,8 @@ class DigitClassifierVisualizer:
         self.img_display = self.ax_img.imshow(np.zeros((28, 28)), cmap='gray_r')
         self.ax_img.set_xticks([])
         self.ax_img.set_yticks([])
+        self.ax_img.set_xlim(-0.5, 27.5)
+        self.ax_img.set_ylim(27.5, -0.5)
         self.ax_img.set_title('Input Image')
 
         # Hidden Layer Activations
@@ -143,7 +145,7 @@ class DigitClassifierVisualizer:
             return []
 
         self.anim = FuncAnimation(self.fig, self._update_plot, frames=len(self.history),
-                                  init_func=init, blit=False, interval=500, repeat=False)
+                                  init_func=init, blit=False, interval=500, repeat=True)
 
         self.controller = AnimationController(self.fig, self)
         plt.show()

@@ -68,7 +68,7 @@ class KMeansVisualizer:
             return self.scatter, self.centroid_scatter,
 
         self.anim = FuncAnimation(self.fig, self._update_plot, frames=len(self.history),
-                                  init_func=init, blit=False, interval=500, repeat=False)
+                                  init_func=init, blit=False, interval=500, repeat=True)
 
         self.controller = AnimationController(self.fig, self)
         plt.show()
